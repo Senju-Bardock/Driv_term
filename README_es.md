@@ -546,4 +546,4 @@ Los issues y pull requests son bienvenidos. Si encuentras un error, incluye tu s
 
 ## Licencia
 
-Todavía no se ha especificado ninguna licencia.
+Todavía no se ha especificado ninguna licencia. El uso de este proyecto es completamente gratuito
