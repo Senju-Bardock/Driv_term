@@ -1,8 +1,8 @@
-# Driv_term
+# trmdriv
 
 **Google Drive in your terminal.** Browse, view, download, upload and organize your Google Drive files from a plain text console, on Windows, Linux and macOS.
 
-Driv_term is a single Python script that uses **only the Python standard library**. There is nothing to `pip install`, no SDK, and no background service. It talks directly to the official Google Drive API v3 over HTTPS and is built for speed: parallel transfers, persistent connections, chunked downloads and resumable uploads.
+trmdriv is a single Python script that uses **only the Python standard library**. There is nothing to `pip install`, no SDK, and no background service. It talks directly to the official Google Drive API v3 over HTTPS and is built for speed: parallel transfers, persistent connections, chunked downloads and resumable uploads.
 
 ---
 
@@ -56,8 +56,8 @@ Driv_term is a single Python script that uses **only the Python standard library
 | Path | Description |
 | --- | --- |
 | `code/` | The Python source code of the application. |
-| `Driv_term_en.exe` | Ready-to-run Windows executable, **English** interface. |
-| `Driv_term_es.exe` | Ready-to-run Windows executable, **Spanish** interface. |
+| `trmdriv_en.exe` | Ready-to-run Windows executable, **English** interface. |
+| `trmdriv_es.exe` | Ready-to-run Windows executable, **Spanish** interface. |
 | `README.md` | This document. |
 
 > If you prefer not to run a pre-built binary, run the Python source from the `code/` folder instead. It is a single readable file and you can inspect everything it does.
@@ -88,8 +88,8 @@ No third-party packages are needed.
 ### Option A: Python source (all platforms)
 
 ```bash
-git clone https://github.com/Senju-Bardock/Driv_term.git
-cd Driv_term/code
+git clone https://github.com/Senju-Bardock/trmdriv.git
+cd trmdriv/code
 python3 <script_name>.py
 ```
 
@@ -97,11 +97,11 @@ On Windows, use `python` instead of `python3`. Replace `<script_name>.py` with t
 
 ### Option B: Windows executable
 
-1. Download `Driv_term_en.exe` (English) or `Driv_term_es.exe` (Spanish) from this repository.
+1. Download `trmdriv_en.exe` (English) or `trmdriv_es.exe` (Spanish) from this repository.
 2. Double-click it, or run it from `cmd` / PowerShell:
 
 ```powershell
-.\Driv_term_en.exe
+.\trmdriv_en.exe
 ```
 
 Windows SmartScreen or your antivirus may warn about unsigned executables downloaded from the internet. This is common for small independent tools. If you are unsure, build and run from the Python source.
@@ -122,7 +122,7 @@ Google does not allow third-party programs to use a username and password. Inste
    - Application type: **Desktop app**.
 5. **Download the JSON file** (or copy the *client ID* and *client secret*).
 
-When you launch Driv_term for the first time, it asks for these credentials:
+When you launch trmdriv for the first time, it asks for these credentials:
 
 ```
 Path to the downloaded JSON (or press Enter to paste ID and secret by hand):
@@ -159,7 +159,7 @@ and then the main browser screen opens.
 
 ## Signing in (OAuth flow)
 
-The first time you use an account (or after the saved session expires), Driv_term starts the authorization process:
+The first time you use an account (or after the saved session expires), trmdriv starts the authorization process:
 
 1. It starts a tiny web server on `127.0.0.1` using a random free port. This only listens on your own computer.
 2. It opens your default browser on Google's consent page. If the browser does not open, the program prints a link you can paste into any browser **on the same computer**.
@@ -286,7 +286,7 @@ You are prompted for a destination folder. Press Enter to use the default (`~/Do
 
 ### Name collisions
 
-Driv_term **never overwrites** existing files. If `report.pdf` already exists, the new file is saved as `report (1).pdf`, then `report (2).pdf`, and so on. Invalid filename characters (`< > : " / \ | ? *`) are replaced with `_`, which also protects against path traversal.
+trmdriv **never overwrites** existing files. If `report.pdf` already exists, the new file is saved as `report (1).pdf`, then `report (2).pdf`, and so on. Invalid filename characters (`< > : " / \ | ? *`) are replaced with `_`, which also protects against path traversal.
 
 ### Large files
 
@@ -319,7 +319,7 @@ Press `u` inside a folder and enter the local path of a **file or folder**. Quot
 
 ### Folders
 
-When you upload a folder, Driv_term first creates the remote folder tree (level by level, in parallel) and then uploads all the files simultaneously (largest first). Unreadable items are skipped and reported in the final summary ("Skipped (no permission/unreadable)").
+When you upload a folder, trmdriv first creates the remote folder tree (level by level, in parallel) and then uploads all the files simultaneously (largest first). Unreadable items are skipped and reported in the final summary ("Skipped (no permission/unreadable)").
 
 ### Result summary
 
@@ -367,7 +367,7 @@ $env:DRIVE_WORKERS=12; python <script_name>.py
 
 ```bat
 set DRIVE_WORKERS=12
-Driv_term_en.exe
+trmdriv_en.exe
 ```
 
 Recommendations:
@@ -465,7 +465,7 @@ This section is for the curious and for contributors.
 - **Shortcuts are skipped** when downloading folders.
 - Exporting Google-native files is subject to Google's export size limit (around 10 MB).
 - The viewer shows at most the **first 1 MiB** of a text file and only the **first sheet** of a spreadsheet.
-- No synchronization: Driv_term is an interactive browser and transfer tool, not a sync client.
+- No synchronization: trmdriv is an interactive browser and transfer tool, not a sync client.
 - No rename, move, copy or permanent delete operations (only create folder, upload, download and move to trash).
 - Uploaded files are stored as-is: they are **not** converted into native Google Docs/Sheets/Slides.
 - Name search matches names that *contain* the text; it does not search file contents.
