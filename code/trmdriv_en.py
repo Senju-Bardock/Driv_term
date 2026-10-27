@@ -13,8 +13,8 @@ FAST VERSION:
   - Large files: resumable upload with 16 MiB chunks and retries.
   - A single global progress bar (speed and remaining time).
 
-Usage:   python3 trmdriv.py
-         python3 trmdriv.py --reset-config   (deletes saved OAuth credentials)
+Usage:   python3 trmdriv_en.py
+         python3 trmdriv_en.py --reset-config   (deletes saved OAuth credentials)
 Threads: environment variable DRIVE_WORKERS (default 8; try between 4 and 16).
          Windows PowerShell:  $env:DRIVE_WORKERS=12; python trmdriv.py
 """
