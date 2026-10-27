@@ -512,6 +512,9 @@ Use Windows Terminal or PowerShell on a recent Windows version. The program enab
 **Windows SmartScreen / antivirus flags the `.exe`**
 Unsigned executables often trigger warnings. Run the Python source instead, which you can read and verify.
 
+**Folders removing**
+There is no option to remove folders yet, I'm currently working on it, give me time bruh
+
 ---
 
 ## FAQ
