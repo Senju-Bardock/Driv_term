@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-drive_terminal.py - Google Drive from the terminal (Linux, Windows, macOS).
+trmdriv.py - Google Drive from the terminal (Linux, Windows, macOS).
 Uses only the Python 3.8+ standard library. No pip, no dependencies.
 
 FAST VERSION:
@@ -13,10 +13,10 @@ FAST VERSION:
   - Large files: resumable upload with 16 MiB chunks and retries.
   - A single global progress bar (speed and remaining time).
 
-Usage:   python3 drive_terminal.py
-         python3 drive_terminal.py --reset-config   (deletes saved OAuth credentials)
+Usage:   python3 trmdriv.py
+         python3 trmdriv.py --reset-config   (deletes saved OAuth credentials)
 Threads: environment variable DRIVE_WORKERS (default 8; try between 4 and 16).
-         Windows PowerShell:  $env:DRIVE_WORKERS=12; python drive_terminal.py
+         Windows PowerShell:  $env:DRIVE_WORKERS=12; python trmdriv.py
 """
 import base64
 import concurrent.futures as cf
@@ -42,7 +42,7 @@ import urllib.parse
 import urllib.request
 import webbrowser
 
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".drive_terminal")
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".trmdriv")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 TOKENS_FILE = os.path.join(CONFIG_DIR, "tokens.json")
 
