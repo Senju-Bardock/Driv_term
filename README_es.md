@@ -1,8 +1,8 @@
-# Driv_term
+# trmdriv
 
 **Google Drive en tu terminal.** Explora, visualiza, descarga, sube y organiza tus archivos de Google Drive desde una consola de texto, en Windows, Linux y macOS.
 
-Driv_term es un único script de Python que usa **solo la biblioteca estándar de Python**. No hay nada que instalar con `pip`, ni SDK, ni servicios en segundo plano. Habla directamente con la API oficial de Google Drive v3 por HTTPS y está pensado para ser rápido: transferencias en paralelo, conexiones persistentes, descargas por trozos y subidas reanudables.
+trmdriv es un único script de Python que usa **solo la biblioteca estándar de Python**. No hay nada que instalar con `pip`, ni SDK, ni servicios en segundo plano. Habla directamente con la API oficial de Google Drive v3 por HTTPS y está pensado para ser rápido: transferencias en paralelo, conexiones persistentes, descargas por trozos y subidas reanudables.
 
 ---
 
@@ -56,8 +56,8 @@ Driv_term es un único script de Python que usa **solo la biblioteca estándar d
 | Ruta | Descripción |
 | --- | --- |
 | `code/` | El código fuente en Python de la aplicación. |
-| `Driv_term_en.exe` | Ejecutable de Windows listo para usar, interfaz en **inglés**. |
-| `Driv_term_es.exe` | Ejecutable de Windows listo para usar, interfaz en **español**. |
+| `trmdriv_en.exe` | Ejecutable de Windows listo para usar, interfaz en **inglés**. |
+| `trmdriv_es.exe` | Ejecutable de Windows listo para usar, interfaz en **español**. |
 | `README.md` | Este documento en inglés. |
 | `README_es.md` | Este documento en español. |
 
@@ -89,8 +89,8 @@ No hacen falta paquetes de terceros.
 ### Opción A: código fuente de Python (todas las plataformas)
 
 ```bash
-git clone https://github.com/Senju-Bardock/Driv_term.git
-cd Driv_term/code
+git clone https://github.com/Senju-Bardock/trmdriv.git
+cd trmdriv/code
 python3 <nombre_del_script>.py
 ```
 
@@ -98,11 +98,11 @@ En Windows usa `python` en lugar de `python3`. Sustituye `<nombre_del_script>.py
 
 ### Opción B: ejecutable de Windows
 
-1. Descarga `Driv_term_es.exe` (español) o `Driv_term_en.exe` (inglés) de este repositorio.
+1. Descarga `trmdriv_es.exe` (español) o `trmdriv_en.exe` (inglés) de este repositorio.
 2. Haz doble clic, o ejecútalo desde `cmd` / PowerShell:
 
 ```powershell
-.\Driv_term_es.exe
+.\trmdriv_es.exe
 ```
 
 Windows SmartScreen o tu antivirus pueden avisar sobre ejecutables sin firmar descargados de internet. Es habitual en herramientas pequeñas e independientes. Si tienes dudas, compila y ejecuta desde el código fuente de Python.
@@ -123,7 +123,7 @@ Google no permite que programas de terceros usen usuario y contraseña. En su lu
    - Tipo de aplicación: **Aplicación de escritorio**.
 5. **Descarga el archivo JSON** (o copia el *ID de cliente* y el *secreto de cliente*).
 
-La primera vez que inicies Driv_term, te pedirá estas credenciales:
+La primera vez que inicies trmdriv, te pedirá estas credenciales:
 
 ```
 Ruta del JSON descargado (o Enter para pegar ID y secreto a mano):
@@ -160,7 +160,7 @@ y se abre la pantalla principal del explorador.
 
 ## Inicio de sesión (flujo OAuth)
 
-La primera vez que uses una cuenta (o cuando caduque la sesión guardada), Driv_term inicia el proceso de autorización:
+La primera vez que uses una cuenta (o cuando caduque la sesión guardada), trmdriv inicia el proceso de autorización:
 
 1. Arranca un pequeño servidor web en `127.0.0.1` con un puerto libre aleatorio. Solo escucha en tu propio equipo.
 2. Abre tu navegador predeterminado en la página de consentimiento de Google. Si el navegador no se abre, el programa imprime un enlace que puedes pegar en cualquier navegador **del mismo equipo**.
@@ -287,7 +287,7 @@ Se te pide una carpeta de destino. Pulsa Enter para usar la predeterminada (`~/D
 
 ### Colisiones de nombres
 
-Driv_term **nunca sobrescribe** archivos existentes. Si ya existe `informe.pdf`, el nuevo se guarda como `informe (1).pdf`, luego `informe (2).pdf`, y así sucesivamente. Los caracteres no válidos en nombres de archivo (`< > : " / \ | ? *`) se sustituyen por `_`, lo que además protege contra el path traversal.
+trmdriv **nunca sobrescribe** archivos existentes. Si ya existe `informe.pdf`, el nuevo se guarda como `informe (1).pdf`, luego `informe (2).pdf`, y así sucesivamente. Los caracteres no válidos en nombres de archivo (`< > : " / \ | ? *`) se sustituyen por `_`, lo que además protege contra el path traversal.
 
 ### Archivos grandes
 
@@ -320,7 +320,7 @@ Pulsa `u` dentro de una carpeta e introduce la ruta local de un **archivo o carp
 
 ### Carpetas
 
-Cuando subes una carpeta, Driv_term primero crea el árbol de carpetas remoto (nivel a nivel, en paralelo) y después sube todos los archivos simultáneamente (primero los más grandes). Los elementos ilegibles se omiten y se indican en el resumen final ("Omitidos (sin permiso/ilegibles)").
+Cuando subes una carpeta, trmdriv primero crea el árbol de carpetas remoto (nivel a nivel, en paralelo) y después sube todos los archivos simultáneamente (primero los más grandes). Los elementos ilegibles se omiten y se indican en el resumen final ("Omitidos (sin permiso/ilegibles)").
 
 ### Resumen del resultado
 
@@ -368,7 +368,7 @@ $env:DRIVE_WORKERS=12; python <nombre_del_script>.py
 
 ```bat
 set DRIVE_WORKERS=12
-Driv_term_es.exe
+trmdriv_es.exe
 ```
 
 Recomendaciones:
@@ -466,7 +466,7 @@ Esta sección es para los curiosos y para quienes quieran contribuir.
 - Los **accesos directos se omiten** al descargar carpetas.
 - La exportación de archivos nativos de Google está sujeta al límite de tamaño de exportación de Google (alrededor de 10 MB).
 - El visor muestra como máximo el **primer 1 MiB** de un archivo de texto y solo la **primera hoja** de una hoja de cálculo.
-- No hay sincronización: Driv_term es una herramienta interactiva de exploración y transferencia, no un cliente de sincronización.
+- No hay sincronización: trmdriv es una herramienta interactiva de exploración y transferencia, no un cliente de sincronización.
 - No hay operaciones de renombrar, mover, copiar ni borrado permanente (solo crear carpeta, subir, descargar y mover a la papelera).
 - Los archivos subidos se guardan tal cual: **no** se convierten en Documentos/Hojas/Presentaciones nativos de Google.
 - La búsqueda por nombre encuentra nombres que *contienen* el texto; no busca en el contenido de los archivos.
