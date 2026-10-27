@@ -42,7 +42,7 @@ import urllib.parse
 import urllib.request
 import webbrowser
 
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".trmdriv")
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".trmdriv_en")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 TOKENS_FILE = os.path.join(CONFIG_DIR, "tokens.json")
 
