@@ -545,4 +545,4 @@ Issues and pull requests are welcome. If you find a bug, please include your ope
 
 ## License
 
-No license has been specified yet. Until one is added, all rights are reserved by the author. If you want others to freely use and modify the project, consider adding a license such as MIT.
+No license has been specified. This is a free project I made for my personal use and uploaded here for everyone to use it freely. 
