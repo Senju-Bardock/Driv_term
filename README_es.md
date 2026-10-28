@@ -173,7 +173,7 @@ Detalles:
 - El programa espera hasta **5 minutos** a que autorices. Pulsa `Ctrl+C` para cancelar.
 - El flujo usa **PKCE** (S256) y un valor `state` aleatorio para protegerse contra interceptaciones y falsificaciones.
 - Si inicias sesión con una cuenta de Google distinta al correo que escribiste, el programa te avisa y usa la cuenta con la que realmente iniciaste sesión.
-- Mientras tu aplicación esté en modo "Testing" (pruebas), Google muestra una pantalla de aviso indicando que la app no está verificada. Es normal porque es *tu propia* aplicación: pulsa **Avanzado** y continúa.
+- Mientras tu aplicación esté en modo "Testing" (pruebas), Google muestra una pantalla de aviso indicando que la app no está verificada. Es normal porque es *mi propia* aplicación: pulsa **Avanzado** y continúa.
 
 ---
 
