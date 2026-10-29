@@ -17,18 +17,20 @@ Driv_term is a single Python script that uses **only the Python standard library
 7. [Signing in (OAuth flow)](#signing-in-oauth-flow)
 8. [The main screen](#the-main-screen)
 9. [Command reference](#command-reference)
-10. [Working with files](#working-with-files)
-11. [Downloading](#downloading)
-12. [Uploading](#uploading)
-13. [Google Docs, Sheets and Slides](#google-docs-sheets-and-slides)
-14. [Performance tuning](#performance-tuning)
-15. [Where your data is stored](#where-your-data-is-stored)
-16. [Security and privacy](#security-and-privacy)
-17. [Command-line options](#command-line-options)
-18. [How it works internally](#how-it-works-internally)
-19. [Limitations](#limitations)
-20. [Troubleshooting](#troubleshooting)
-21. [FAQ](#faq)
+10. [Selecting several items](#selecting-several-items)
+11. [Working with files](#working-with-files)
+12. [Downloading](#downloading)
+13. [Uploading](#uploading)
+14. [Moving to trash](#moving-to-trash)
+15. [Google Docs, Sheets and Slides](#google-docs-sheets-and-slides)
+16. [Performance tuning](#performance-tuning)
+17. [Where your data is stored](#where-your-data-is-stored)
+18. [Security and privacy](#security-and-privacy)
+19. [Command-line options](#command-line-options)
+20. [How it works internally](#how-it-works-internally)
+21. [Limitations](#limitations)
+22. [Troubleshooting](#troubleshooting)
+23. [FAQ](#faq)
 
 ---
 
@@ -41,6 +43,8 @@ Driv_term is a single Python script that uses **only the Python standard library
 - **Fast recursive folder download.** The folder tree is listed in batches and in parallel instead of one request per folder.
 - **Smart uploads.** Small files (up to 5 MiB) go in a single multipart request. Large files use Drive's resumable upload protocol with 16 MiB chunks and automatic recovery after network failures.
 - **Whole-folder upload and download**, preserving the directory structure.
+- **Friendly upload picker.** Press `u` and choose files and folders with your system's file dialog (several at once). No more typing long paths. Without a graphical interface (SSH, servers) it falls back to typed paths automatically.
+- **Download and delete several items at once.** `d 1-3,5` downloads files and folders in a single batch with one progress bar, and `t 2,4-6` moves them to the trash. `all` selects everything.
 - **One global progress bar** with total size, percentage, current speed and estimated time remaining.
 - **Built-in viewer.** Read text files, Google Docs, Slides and the first sheet of a Google Sheet directly in the terminal, with paging. Other files are opened with your system's default application.
 - **Automatic export** of native Google files (Docs, Sheets, Slides, Drawings) to Office/PDF/PNG formats.
@@ -55,7 +59,8 @@ Driv_term is a single Python script that uses **only the Python standard library
 
 | Path | Description |
 | --- | --- |
-| `code/` | The Python source code of the application. |
+| `code/Driv_term_en.py` | Python source code, **English** interface. |
+| `code/Driv_term_es.py` | Python source code, **Spanish** interface. |
 | `Driv_term_en.exe` | Ready-to-run Windows executable, **English** interface. |
 | `Driv_term_es.exe` | Ready-to-run Windows executable, **Spanish** interface. |
 | `README.md` | This document. |
@@ -90,10 +95,10 @@ No third-party packages are needed.
 ```bash
 git clone https://github.com/Senju-Bardock/Driv_term.git
 cd Driv_term/code
-python3 <script_name>.py
+python3 Driv_term_en.py
 ```
 
-On Windows, use `python` instead of `python3`. Replace `<script_name>.py` with the actual script file inside the `code/` folder.
+On Windows, use `python` instead of `python3`. Use `Driv_term_es.py` instead for the Spanish interface.
 
 ### Option B: Windows executable
 
@@ -192,7 +197,7 @@ Path: My Drive / Projects
 
 Page 1/1 - 5 items
   [number] open | b back | h home | n/p page | s search | c shared with me
-  d N download folder/file (e.g. d 3) | u upload | m new folder
+  d SEL download | t SEL trash | u upload | m new folder   (SEL: 3 | 1-4 | 1,3,7 | all)
   r reload | x log out | q quit   (Ctrl+C cancels a transfer)
 
 >
@@ -202,7 +207,7 @@ Page 1/1 - 5 items
 
 | Column | Meaning |
 | --- | --- |
-| `#` | The number you type to open an item or to use with `d`. |
+| `#` | The number you type to open an item or to use with `d` and `t`. |
 | `Type` | `DIR` folder, `FILE` regular file, `GDOC` native Google file (Docs/Sheets/Slides/Drawings), `LNK` shortcut. |
 | `Name` | Item name (truncated with `~` if too long for your terminal width). |
 | `Size` | Human-readable size (`-` for folders and Google-native files). |
@@ -224,8 +229,9 @@ Type a command at the `>` prompt and press Enter.
 | `n` / `p` | Next / previous page. |
 | `s` | Search by name (items whose name *contains* the text you type). |
 | `c` | Show files **shared with you**. |
-| `d N` | Download item number `N` (file or whole folder), e.g. `d 3`. |
-| `u` | Upload a local file or folder into the current folder. |
+| `d SEL` | Download one or **several** items (files and/or folders), e.g. `d 3`, `d 1-4`, `d 1,3,7`, `d all`. See [Selecting several items](#selecting-several-items). |
+| `t SEL` | Move one or **several** items to the Drive trash (after confirmation). Same selection syntax as `d`. |
+| `u` | Upload files and/or folders into the current folder using the system file picker. |
 | `m` | Create a new folder in the current folder. |
 | `r` | Reload the current listing. |
 | `x` | Log out and delete the saved token for this account from this computer. |
@@ -235,7 +241,23 @@ Type a command at the `>` prompt and press Enter.
 Notes:
 
 - `u` and `m` only work **inside a folder**, not inside search results or "Shared with me". Enter a folder first.
-- After an upload, folder creation or removal, the list is refreshed automatically.
+- After an upload, folder creation or moving items to the trash, the list is refreshed automatically.
+
+---
+
+## Selecting several items
+
+The `d` (download) and `t` (move to trash) commands accept **one or several items** at once. Write the command followed by the numbers shown in the `#` column:
+
+| You type | It selects |
+| --- | --- |
+| `d 3` | Item 3. |
+| `d 1-4` | Items 1, 2, 3 and 4. |
+| `d 1,3,7` | Items 1, 3 and 7. |
+| `d 2-5 9` | Items 2 to 5, and 9. Commas and spaces both work, and you can mix ranges and single numbers. |
+| `d all` | **Every** item in the current listing (all pages, not just the one on screen). |
+
+The same syntax works with `t`. Invalid input (`d 0`, `t 99`, `d abc`...) is rejected with a message and **nothing is done**. Typing just `d` or `t` shows a short reminder of the syntax.
 
 ---
 
@@ -272,17 +294,17 @@ Shows metadata: ID, name, MIME type, size, creation and modification times, web 
 
 ### 4) Move to trash
 
-After confirmation (`y`), moves the file to the **Drive trash**. This is **not** a permanent deletion: you can restore the file from the trash in Google Drive.
+After confirmation (`y`), moves the file to the **Drive trash**. This is **not** a permanent deletion: you can restore the file from the trash in Google Drive. To trash several items at once, use `t` on the main screen (see [Moving to trash](#moving-to-trash)).
 
 ---
 
 ## Downloading
 
-Use `d N` on the main screen, or the **Download** option in a file's menu.
+Use `d SEL` on the main screen (one or several items, see [Selecting several items](#selecting-several-items)), or the **Download** option in a file's menu.
 
 ### Destination
 
-You are prompted for a destination folder. Press Enter to use the default (`~/Downloads`, or the current directory if it does not exist).
+You are prompted for a destination folder. Press Enter to use the default (`~/Downloads`, or the current directory if it does not exist), or type `?` to pick the folder with the system dialog.
 
 ### Name collisions
 
@@ -294,7 +316,7 @@ Files of **32 MiB or more** are split into **16 MiB parts** that are downloaded 
 
 ### Whole folders
 
-`d N` on a folder downloads it **recursively**:
+`d 3` on a folder downloads it **recursively**:
 
 1. The structure is read level by level, listing up to 30 folders per API query and running queries in parallel.
 2. Local folders are created to mirror the Drive structure.
@@ -306,11 +328,94 @@ Things to know:
 - Native Google files inside the folder are exported using the **first** format of each type (see the table below).
 - A summary is shown at the end: number of files, number of errors and the reason for the first failure.
 
+### Several files and folders at once
+
+`d` accepts a selection (see [Selecting several items](#selecting-several-items)), so you can mix files and folders in a single command:
+
+```
+> d 1-3,6
+Destination folder [C:\Users\you\Downloads]  (Enter = that one, ? = open the picker):
+  Reading structure... 142 files.
+  Downloading 142/142 files  1.2 GB / 1.2 GB  100%  38.4 MB/s
+  Finished in 00:31 (average 38.1 MB/s)
+```
+
+- Everything goes into **one batch**: one progress bar and one shared thread pool, so small files from different folders do not wait for each other.
+- Name collisions are resolved across the **whole selection** (two items called `report.pdf` become `report.pdf` and `report (1).pdf`), and existing files are never overwritten.
+- Each selected folder is downloaded recursively, as described above. Native Google files are exported to the first format of their type.
+- A selected **shortcut** is followed and its target is downloaded.
+- At the destination prompt you can type `?` to open the system folder picker instead of typing a path.
+- When it finishes you get a summary (`Download finished in <folder>: N files`) with the number of errors and the reason for the first failure, if any.
+
 ---
 
 ## Uploading
 
-Press `u` inside a folder and enter the local path of a **file or folder**. Quotes around the path and `~` are handled for you.
+Press `u` inside a folder. Driv_term opens an upload screen where you build a list of local **files and folders** (any mix, as many as you want) and then uploads the whole list in one go:
+
+```
+Upload to: My Drive / Projects
+
+Selected (3):
+   DIR   C:\Users\you\Photos
+   FILE  C:\Users\you\report.pdf
+   FILE  C:\Users\you\notes.txt
+
+  1) Choose files (several at once)      2) Choose folder(s) (repeat to add more)
+  3) Type / paste paths                  c) Clear the list
+  s) UPLOAD the selection                0) Cancel
+
+>
+```
+
+| Key | Action |
+| --- | --- |
+| `1` | Opens the system **file picker**. Select one or several files at once. |
+| `2` | Opens the system **folder picker**. See the table below for how many folders you can pick per dialog; you can always repeat the option to add more. |
+| `3` | Type or paste paths by hand (one per line, empty line to finish). Dragging a file or folder onto the terminal pastes its path. |
+| `c` | Clears the list. |
+| `s` | Starts the upload of everything in the list. |
+| `0` | Cancels and goes back to the browser without uploading anything. |
+
+You can use `1`, `2` and `3` as many times as you like before pressing `s`. The list shows what is selected so far.
+
+> The upload is only possible **inside a folder** (not in search results or "Shared with me"). Enter the destination folder first; its path is shown at the top of the upload screen.
+
+### The local file picker
+
+The picker is a **convenience, not a requirement**: Driv_term chooses the best option available on your computer.
+
+| System | What is used | Several folders in one dialog |
+| --- | --- | --- |
+| Windows | Native Windows dialog (included with Python for Windows) | No, one folder per dialog (repeat `2`) |
+| macOS | Native macOS dialog | Yes |
+| Linux with a desktop | `zenity` if it is installed, otherwise `python3-tk` | Yes with `zenity`; one per dialog with `python3-tk` |
+| Linux without a desktop, SSH, servers | No picker: typed-path mode | You type as many paths as you want |
+
+On Linux you can install the graphical picker with `sudo apt install zenity` (or `sudo apt install python3-tk`).
+
+### Without a graphical interface (CLI only)
+
+If no picker can be opened (SSH session, server without a screen, no `zenity`/`tkinter`), Driv_term **detects it automatically** and falls back to typed paths. Pressing `1` or `2` prints a short notice and asks for the paths one per line:
+
+```
+  No graphical picker available (SSH or no display).
+  On Linux you can install it with: sudo apt install zenity   (or python3-tk)
+  Type or drag each path here (one per line). Empty line to finish.
+  > /home/you/backup.tar
+  > /home/you/photos
+  >
+```
+
+Everything else (the list, `s` to upload, `c`, `0`) works exactly the same, so the experience is the same in a terminal-only environment.
+
+> Signing in still needs a web browser on the same computer the first time (see [Signing in](#signing-in-oauth-flow)). On a headless server, authorize from a machine with a browser or use SSH port forwarding.
+
+### What happens to the selection
+
+- Duplicates are removed, and anything **already inside a selected folder is dropped**, so nothing is uploaded twice.
+- Paths that do not exist are reported (`Does not exist: ...`) and ignored.
+- Files and folders are uploaded in **one batch** with a single progress bar.
 
 ### Single files
 
@@ -319,15 +424,46 @@ Press `u` inside a folder and enter the local path of a **file or folder**. Quot
 
 ### Folders
 
-When you upload a folder, Driv_term first creates the remote folder tree (level by level, in parallel) and then uploads all the files simultaneously (largest first). Unreadable items are skipped and reported in the final summary ("Skipped (no permission/unreadable)").
+For every selected folder, Driv_term first creates the remote folder tree (level by level, in parallel) and then uploads all the files simultaneously (largest first). Unreadable items are skipped and reported in the final summary ("Skipped (no permission/unreadable)").
 
 ### Result summary
 
 ```
-Upload completed: 128 files, 2 with errors
+Upload finished: 128 files, 2 with errors
    Failed: a.bin, b.iso
    Reason for the first one: [403] ...
 ```
+
+---
+
+## Moving to trash
+
+There are two ways to delete, both of which move items to the **Drive trash** (nothing is deleted permanently):
+
+- **One file:** open its menu and choose `4) Move to trash`.
+- **Several files and/or folders:** use `t` with a selection on the main screen.
+
+```
+> t 2,4-6
+Move to trash (recoverable) (4):
+   - Old backups/
+   - draft.docx
+   - photo1.jpg
+   - photo2.jpg
+Confirm [y/N]: y
+  Moving to trash 4/4
+Moved to trash: 4
+```
+
+How it works:
+
+- It lists what is about to be trashed (up to 10 names; folders end with `/`) and asks for confirmation. **Any answer other than `y` cancels** and nothing is touched.
+- Items are processed in parallel, with a live counter.
+- Trashing a **folder** also trashes everything inside it.
+- Items stay in the Drive trash, where you can restore them from Google Drive (Google keeps trashed items for about 30 days before removing them for good).
+- If you select a **shortcut**, only the shortcut is trashed, **never** the file or folder it points to.
+- If some items fail (for example, files shared with you that you do not own), the rest are still processed and the summary shows which ones failed and why.
+- `t all` trashes **everything** in the current listing. Check the confirmation list before answering `y`.
 
 ---
 
@@ -349,18 +485,18 @@ The correct extension is appended to the file name automatically. Note that Goog
 
 ## Performance tuning
 
-The number of simultaneous transfers is controlled by the `DRIVE_WORKERS` environment variable (default **8**, allowed range **1 to 32**).
+The number of simultaneous transfers is controlled by the `DRIVE_WORKERS` environment variable (default **8**, allowed range **1 to 32**). It applies to downloads, uploads and moving items to the trash.
 
 **Linux / macOS**
 
 ```bash
-DRIVE_WORKERS=12 python3 <script_name>.py
+DRIVE_WORKERS=12 python3 Driv_term_en.py
 ```
 
 **Windows PowerShell**
 
 ```powershell
-$env:DRIVE_WORKERS=12; python <script_name>.py
+$env:DRIVE_WORKERS=12; python Driv_term_en.py
 ```
 
 **Windows cmd**
@@ -426,10 +562,12 @@ This section is for the curious and for contributors.
 | --- | --- |
 | `Auth` | OAuth 2.0 loopback + PKCE login, token refresh (thread-safe), token storage. |
 | `Http` | HTTPS layer with one persistent connection **per thread and host**, automatic retries with exponential backoff and jitter, 401 token refresh, safe redirect handling. |
-| `Drive` | Drive API v3 calls: listing, search, batch listing, downloads, exports, uploads, folder creation. |
+| `Drive` | Drive API v3 calls: listing, search, batch listing, downloads (single, folder and multi-selection batch), exports, uploads (files and folders in one batch), folder creation and moving to trash. |
 | `FileJob` | One file to download, which may consist of several parts. |
 | `Progress` | A thread-safe global progress bar with smoothed speed and ETA. |
 | `browse()` / `file_menu()` | The interactive terminal interface. |
+| `pick_local()` / `choose_uploads()` | The local file picker (native dialog or typed-path fallback) and the upload selection screen. |
+| `parse_selection()` | Parses selections such as `1-4,7` or `all` for `d` and `t`. |
 
 **Networking details**
 
@@ -466,7 +604,9 @@ This section is for the curious and for contributors.
 - Exporting Google-native files is subject to Google's export size limit (around 10 MB).
 - The viewer shows at most the **first 1 MiB** of a text file and only the **first sheet** of a spreadsheet.
 - No synchronization: Driv_term is an interactive browser and transfer tool, not a sync client.
-- No rename, move, copy or permanent delete operations (only create folder, upload, download and move to trash).
+- No rename, move, copy or permanent delete operations (only create folder, upload, download and move to trash). Moving to the trash is the only way to delete, and it is always reversible.
+- On Windows (and Linux with `python3-tk`) the system dialog selects **one folder at a time**; repeat the option to add more. Several files, however, can be selected together.
+- Items you do not own (for example some "Shared with me" files) cannot be moved to the trash; they are reported as errors while the rest of the selection is processed.
 - Uploaded files are stored as-is: they are **not** converted into native Google Docs/Sheets/Slides.
 - Name search matches names that *contain* the text; it does not search file contents.
 - Transfers are not resumed across program restarts (resumption works only within a single run, for uploads).
@@ -512,8 +652,14 @@ Use Windows Terminal or PowerShell on a recent Windows version. The program enab
 **Windows SmartScreen / antivirus flags the `.exe`**
 Unsigned executables often trigger warnings. Run the Python source instead, which you can read and verify.
 
-**Folders removing**
-There is no option to remove folders yet, I'm currently working on it, give me time bruh
+**The file/folder picker does not open**
+This happens over SSH, on servers without a screen, or on Linux without `zenity` or `python3-tk`. Driv_term then asks you to type the paths (one per line), so you can still upload. To get the graphical picker on Linux, install it with `sudo apt install zenity` (or `python3-tk`).
+
+**`Number out of range` / `Invalid selection`**
+The numbers after `d` or `t` must be in the `#` column of the current listing. Valid examples: `d 3`, `d 1-4`, `t 1,3,7`, `d all`. Nothing is downloaded or trashed when the selection is invalid.
+
+**Some items could not be moved to the trash**
+The summary lists the ones that failed and the reason of the first one. The usual cause is `[403]` on files you do not own (for example shared with you). The rest of the selection is still processed.
 
 ---
 
@@ -532,7 +678,16 @@ Yes. Enter a different email at startup. Tokens are stored per account. Use `x` 
 Items from Shared Drives are included in listings and searches. Use `c` for files shared directly with you.
 
 **Does it delete my files?**
-Only if you explicitly choose *Move to trash*, and even then the files can be restored from the Drive trash.
+Only if you explicitly choose *Move to trash* (from a file's menu, or with `t` for several items), after a confirmation, and even then the files can be restored from the Drive trash. It never deletes permanently.
+
+**Can I download or delete more than one file or folder at once?**
+Yes. Use a selection: `d 1-3,5` to download, `t 2,4-6` to move to the trash, or `all` for everything in the listing. Files and folders can be mixed. See [Selecting several items](#selecting-several-items).
+
+**Can I upload several files and folders at once?**
+Yes. Press `u`, choose files and folders with the picker as many times as you want, and press `s` to upload them all in one batch.
+
+**Does it work without a graphical interface (SSH, servers, Linux console)?**
+Yes. The picker is optional: if no dialog can be opened, Driv_term asks you to type or paste the paths. Everything else is plain terminal. Only the first sign-in needs a browser on the same computer.
 
 **Where are the temporary files?**
 Non-text files opened with *View* are saved in a `drive_term_*` folder in your system temp directory.

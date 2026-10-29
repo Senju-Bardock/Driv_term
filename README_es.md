@@ -17,18 +17,20 @@ Driv_term es un único script de Python que usa **solo la biblioteca estándar d
 7. [Inicio de sesión (flujo OAuth)](#inicio-de-sesión-flujo-oauth)
 8. [La pantalla principal](#la-pantalla-principal)
 9. [Referencia de comandos](#referencia-de-comandos)
-10. [Trabajar con archivos](#trabajar-con-archivos)
-11. [Descargas](#descargas)
-12. [Subidas](#subidas)
-13. [Documentos, Hojas de cálculo y Presentaciones de Google](#documentos-hojas-de-cálculo-y-presentaciones-de-google)
-14. [Ajuste del rendimiento](#ajuste-del-rendimiento)
-15. [Dónde se guardan tus datos](#dónde-se-guardan-tus-datos)
-16. [Seguridad y privacidad](#seguridad-y-privacidad)
-17. [Opciones de línea de comandos](#opciones-de-línea-de-comandos)
-18. [Cómo funciona por dentro](#cómo-funciona-por-dentro)
-19. [Limitaciones](#limitaciones)
-20. [Solución de problemas](#solución-de-problemas)
-21. [Preguntas frecuentes](#preguntas-frecuentes)
+10. [Seleccionar varios elementos](#seleccionar-varios-elementos)
+11. [Trabajar con archivos](#trabajar-con-archivos)
+12. [Descargas](#descargas)
+13. [Subidas](#subidas)
+14. [Mover a la papelera](#mover-a-la-papelera)
+15. [Documentos, Hojas de cálculo y Presentaciones de Google](#documentos-hojas-de-cálculo-y-presentaciones-de-google)
+16. [Ajuste del rendimiento](#ajuste-del-rendimiento)
+17. [Dónde se guardan tus datos](#dónde-se-guardan-tus-datos)
+18. [Seguridad y privacidad](#seguridad-y-privacidad)
+19. [Opciones de línea de comandos](#opciones-de-línea-de-comandos)
+20. [Cómo funciona por dentro](#cómo-funciona-por-dentro)
+21. [Limitaciones](#limitaciones)
+22. [Solución de problemas](#solución-de-problemas)
+23. [Preguntas frecuentes](#preguntas-frecuentes)
 
 ---
 
@@ -41,6 +43,8 @@ Driv_term es un único script de Python que usa **solo la biblioteca estándar d
 - **Descarga recursiva rápida de carpetas.** El árbol de carpetas se lista por lotes y en paralelo, en lugar de una petición por carpeta.
 - **Subidas inteligentes.** Los archivos pequeños (hasta 5 MiB) van en una sola petición multipart. Los grandes usan el protocolo de subida reanudable de Drive con trozos de 16 MiB y recuperación automática ante fallos de red.
 - **Subida y descarga de carpetas completas**, conservando la estructura de directorios.
+- **Explorador amigable para subir.** Pulsa `u` y elige archivos y carpetas con la ventana de archivos de tu sistema (varios a la vez). Se acabó escribir rutas largas. Sin interfaz gráfica (SSH, servidores) pasa automáticamente a rutas escritas.
+- **Descarga y borra varios elementos a la vez.** `d 1-3,5` descarga archivos y carpetas en un solo lote con una barra de progreso, y `t 2,4-6` los mueve a la papelera. `all` selecciona todo.
 - **Una barra de progreso global** con tamaño total, porcentaje, velocidad actual y tiempo estimado restante.
 - **Visor integrado.** Lee archivos de texto, Documentos, Presentaciones y la primera hoja de una Hoja de cálculo de Google directamente en la terminal, con paginación. El resto de archivos se abren con la aplicación predeterminada de tu sistema.
 - **Exportación automática** de los archivos nativos de Google (Documentos, Hojas de cálculo, Presentaciones, Dibujos) a formatos Office/PDF/PNG.
@@ -55,7 +59,8 @@ Driv_term es un único script de Python que usa **solo la biblioteca estándar d
 
 | Ruta | Descripción |
 | --- | --- |
-| `code/` | El código fuente en Python de la aplicación. |
+| `code/Driv_term_en.py` | Código fuente en Python, interfaz en **inglés**. |
+| `code/Driv_term_es.py` | Código fuente en Python, interfaz en **español**. |
 | `Driv_term_en.exe` | Ejecutable de Windows listo para usar, interfaz en **inglés**. |
 | `Driv_term_es.exe` | Ejecutable de Windows listo para usar, interfaz en **español**. |
 | `README.md` | Este documento en inglés. |
@@ -91,10 +96,10 @@ No hacen falta paquetes de terceros.
 ```bash
 git clone https://github.com/Senju-Bardock/Driv_term.git
 cd Driv_term/code
-python3 <nombre_del_script>.py
+python3 Driv_term_es.py
 ```
 
-En Windows usa `python` en lugar de `python3`. Sustituye `<nombre_del_script>.py` por el nombre real del archivo dentro de la carpeta `code/`.
+En Windows usa `python` en lugar de `python3`. Usa `Driv_term_en.py` para la interfaz en inglés.
 
 ### Opción B: ejecutable de Windows
 
@@ -193,7 +198,7 @@ Ruta: Mi unidad / Proyectos
 
 Pagina 1/1 - 5 elementos
   [numero] abrir | b atras | h inicio | n/p pagina | s buscar | c compartidos conmigo
-  d N descargar carpeta/archivo (ej: d 3) | u subir | m nueva carpeta
+  d SEL descargar | t SEL papelera | u subir | m nueva carpeta   (SEL: 3 | 1-4 | 1,3,7 | all)
   r recargar | x cerrar sesion | q salir   (Ctrl+C cancela una transferencia)
 
 >
@@ -203,7 +208,7 @@ Pagina 1/1 - 5 elementos
 
 | Columna | Significado |
 | --- | --- |
-| `#` | El número que escribes para abrir un elemento o para usar con `d`. |
+| `#` | El número que escribes para abrir un elemento o para usar con `d` y `t`. |
 | `Tipo` | `DIR` carpeta, `FILE` archivo normal, `GDOC` archivo nativo de Google (Documentos/Hojas/Presentaciones/Dibujos), `LNK` acceso directo. |
 | `Nombre` | Nombre del elemento (se recorta con `~` si es demasiado largo para el ancho de tu terminal). |
 | `Tamano` | Tamaño legible (`-` para carpetas y archivos nativos de Google). |
@@ -225,8 +230,9 @@ Escribe un comando en el prompt `>` y pulsa Enter.
 | `n` / `p` | Página siguiente / anterior. |
 | `s` | Busca por nombre (elementos cuyo nombre *contiene* el texto que escribas). |
 | `c` | Muestra los archivos **compartidos contigo**. |
-| `d N` | Descarga el elemento número `N` (archivo o carpeta entera), por ejemplo `d 3`. |
-| `u` | Sube un archivo o carpeta local a la carpeta actual. |
+| `d SEL` | Descarga uno o **varios** elementos (archivos y/o carpetas), por ejemplo `d 3`, `d 1-4`, `d 1,3,7`, `d all`. Ver [Seleccionar varios elementos](#seleccionar-varios-elementos). |
+| `t SEL` | Mueve uno o **varios** elementos a la papelera de Drive (tras confirmar). Misma sintaxis de selección que `d`. |
+| `u` | Sube archivos y/o carpetas a la carpeta actual usando el explorador de archivos del sistema. |
 | `m` | Crea una nueva carpeta en la carpeta actual. |
 | `r` | Recarga el listado actual. |
 | `x` | Cierra sesión y borra de este equipo el token guardado de esta cuenta. |
@@ -236,7 +242,23 @@ Escribe un comando en el prompt `>` y pulsa Enter.
 Notas:
 
 - `u` y `m` solo funcionan **dentro de una carpeta**, no dentro de resultados de búsqueda ni de "Compartidos conmigo". Entra primero en una carpeta.
-- Tras una subida, la creación de una carpeta o un borrado, el listado se actualiza automáticamente.
+- Tras una subida, la creación de una carpeta o mover elementos a la papelera, el listado se actualiza automáticamente.
+
+---
+
+## Seleccionar varios elementos
+
+Los comandos `d` (descargar) y `t` (mover a la papelera) aceptan **uno o varios elementos** a la vez. Escribe el comando seguido de los números de la columna `#`:
+
+| Escribes | Selecciona |
+| --- | --- |
+| `d 3` | El elemento 3. |
+| `d 1-4` | Los elementos 1, 2, 3 y 4. |
+| `d 1,3,7` | Los elementos 1, 3 y 7. |
+| `d 2-5 9` | Del 2 al 5, y el 9. Sirven comas y espacios, y puedes mezclar rangos y números sueltos. |
+| `d all` (o `d todo`) | **Todos** los elementos del listado actual (todas las páginas, no solo la que ves). |
+
+La misma sintaxis funciona con `t`. Si la entrada no es válida (`d 0`, `t 99`, `d abc`...) se rechaza con un mensaje y **no se hace nada**. Si escribes solo `d` o `t`, se muestra un recordatorio breve de la sintaxis.
 
 ---
 
@@ -273,17 +295,17 @@ Muestra metadatos: ID, nombre, tipo MIME, tamaño, fechas de creación y modific
 
 ### 4) Mover a la papelera
 
-Tras confirmar (`s`), mueve el archivo a la **papelera de Drive**. **No** es un borrado permanente: puedes restaurar el archivo desde la papelera en Google Drive.
+Tras confirmar (`s`), mueve el archivo a la **papelera de Drive**. **No** es un borrado permanente: puedes restaurar el archivo desde la papelera en Google Drive. Para enviar varios elementos a la vez a la papelera, usa `t` en la pantalla principal (ver [Mover a la papelera](#mover-a-la-papelera)).
 
 ---
 
 ## Descargas
 
-Usa `d N` en la pantalla principal, o la opción **Descargar** del menú de un archivo.
+Usa `d SEL` en la pantalla principal (uno o varios elementos, ver [Seleccionar varios elementos](#seleccionar-varios-elementos)), o la opción **Descargar** del menú de un archivo.
 
 ### Destino
 
-Se te pide una carpeta de destino. Pulsa Enter para usar la predeterminada (`~/Downloads`, o el directorio actual si no existe).
+Se te pide una carpeta de destino. Pulsa Enter para usar la predeterminada (`~/Downloads`, o el directorio actual si no existe), o escribe `?` para elegir la carpeta con la ventana del sistema.
 
 ### Colisiones de nombres
 
@@ -295,7 +317,7 @@ Los archivos de **32 MiB o más** se dividen en **partes de 16 MiB** que se desc
 
 ### Carpetas enteras
 
-`d N` sobre una carpeta la descarga de forma **recursiva**:
+`d 3` sobre una carpeta la descarga de forma **recursiva**:
 
 1. La estructura se lee nivel a nivel, listando hasta 30 carpetas por consulta a la API y ejecutando las consultas en paralelo.
 2. Se crean carpetas locales que replican la estructura de Drive.
@@ -307,11 +329,94 @@ Conviene saber que:
 - Los archivos nativos de Google dentro de la carpeta se exportan usando el **primer** formato de cada tipo (ver la tabla más abajo).
 - Al final se muestra un resumen: número de archivos, número de errores y el motivo del primer fallo.
 
+### Varios archivos y carpetas a la vez
+
+`d` acepta una selección (ver [Seleccionar varios elementos](#seleccionar-varios-elementos)), así que puedes mezclar archivos y carpetas en un solo comando:
+
+```
+> d 1-3,6
+Carpeta destino [C:\Users\tu_usuario\Downloads]  (Enter = esa, ? = abrir explorador):
+  Leyendo estructura... 142 archivos.
+  Descargando 142/142 archivos  1.2 GB / 1.2 GB  100%  38.4 MB/s
+  Terminado en 00:31 (media 38.1 MB/s)
+```
+
+- Todo va en **un único lote**: una barra de progreso y un solo grupo de hilos compartido, de modo que los archivos pequeños de carpetas distintas no esperan unos a otros.
+- Las colisiones de nombres se resuelven en **toda la selección** (dos elementos llamados `informe.pdf` quedan como `informe.pdf` e `informe (1).pdf`), y nunca se sobrescriben archivos existentes.
+- Cada carpeta seleccionada se descarga de forma recursiva, como se explicó antes. Los archivos nativos de Google se exportan al primer formato de su tipo.
+- Si seleccionas un **acceso directo**, se sigue y se descarga su destino.
+- En la pregunta del destino puedes escribir `?` para abrir el explorador de carpetas del sistema en lugar de escribir la ruta.
+- Al terminar se muestra un resumen (`Descarga completada en <carpeta>: N archivos`) con el número de errores y el motivo del primer fallo, si lo hay.
+
 ---
 
 ## Subidas
 
-Pulsa `u` dentro de una carpeta e introduce la ruta local de un **archivo o carpeta**. Las comillas alrededor de la ruta y el `~` se gestionan por ti.
+Pulsa `u` dentro de una carpeta. Driv_term abre una pantalla de subida donde construyes una lista de **archivos y carpetas** locales (mezclados, todos los que quieras) y después sube toda la lista de una vez:
+
+```
+Subir a: Mi unidad / Proyectos
+
+Seleccionado (3):
+   DIR   C:\Users\tu_usuario\Fotos
+   FILE  C:\Users\tu_usuario\informe.pdf
+   FILE  C:\Users\tu_usuario\notas.txt
+
+  1) Elegir archivos (varios a la vez)   2) Elegir carpeta(s) (repite para anadir mas)
+  3) Escribir / pegar rutas              c) Vaciar la lista
+  s) SUBIR lo elegido                    0) Cancelar
+
+>
+```
+
+| Tecla | Acción |
+| --- | --- |
+| `1` | Abre el **explorador de archivos** del sistema. Selecciona uno o varios archivos a la vez. |
+| `2` | Abre el **explorador de carpetas** del sistema. En la tabla de abajo se indica cuántas carpetas puedes elegir por ventana; siempre puedes repetir la opción para añadir más. |
+| `3` | Escribe o pega rutas a mano (una por línea, línea vacía para terminar). Arrastrar un archivo o carpeta a la terminal pega su ruta. |
+| `c` | Vacía la lista. |
+| `s` | Empieza a subir todo lo que hay en la lista. |
+| `0` | Cancela y vuelve al explorador sin subir nada. |
+
+Puedes usar `1`, `2` y `3` tantas veces como quieras antes de pulsar `s`. La lista muestra lo que llevas seleccionado.
+
+> Solo se puede subir **dentro de una carpeta** (no en resultados de búsqueda ni en "Compartidos conmigo"). Entra primero en la carpeta de destino; su ruta aparece arriba en la pantalla de subida.
+
+### El explorador de archivos local
+
+El explorador es una **comodidad, no un requisito**: Driv_term elige la mejor opción disponible en tu equipo.
+
+| Sistema | Qué se usa | Varias carpetas en una ventana |
+| --- | --- | --- |
+| Windows | Ventana nativa de Windows (incluida con Python para Windows) | No, una carpeta por ventana (repite `2`) |
+| macOS | Ventana nativa de macOS | Sí |
+| Linux con escritorio | `zenity` si está instalado, si no `python3-tk` | Sí con `zenity`; una por ventana con `python3-tk` |
+| Linux sin escritorio, SSH, servidores | Sin explorador: modo de rutas escritas | Escribes todas las rutas que quieras |
+
+En Linux puedes instalar el explorador gráfico con `sudo apt install zenity` (o `sudo apt install python3-tk`).
+
+### Sin interfaz gráfica (solo CLI)
+
+Si no se puede abrir ningún explorador (sesión SSH, servidor sin pantalla, sin `zenity`/`tkinter`), Driv_term lo **detecta automáticamente** y pasa al modo de rutas escritas. Al pulsar `1` o `2` muestra un aviso breve y pide las rutas una por línea:
+
+```
+  No hay explorador grafico disponible (SSH o sin pantalla).
+  En Linux puedes instalarlo con: sudo apt install zenity   (o python3-tk)
+  Escribe o arrastra aqui cada ruta (una por linea). Linea vacia para terminar.
+  > /home/tu_usuario/copia.tar
+  > /home/tu_usuario/fotos
+  >
+```
+
+Todo lo demás (la lista, `s` para subir, `c`, `0`) funciona exactamente igual, así que la experiencia es la misma en un entorno solo de terminal.
+
+> El inicio de sesión sigue necesitando un navegador en el mismo equipo la primera vez (ver [Inicio de sesión](#inicio-de-sesión-flujo-oauth)). En un servidor sin pantalla, autoriza desde una máquina con navegador o usa reenvío de puertos por SSH.
+
+### Qué pasa con la selección
+
+- Se eliminan los duplicados y se **descarta todo lo que ya está dentro de una carpeta seleccionada**, para que nada se suba dos veces.
+- Las rutas que no existen se avisan (`No existe: ...`) y se ignoran.
+- Archivos y carpetas se suben en **un único lote** con una sola barra de progreso.
 
 ### Archivos individuales
 
@@ -320,7 +425,7 @@ Pulsa `u` dentro de una carpeta e introduce la ruta local de un **archivo o carp
 
 ### Carpetas
 
-Cuando subes una carpeta, Driv_term primero crea el árbol de carpetas remoto (nivel a nivel, en paralelo) y después sube todos los archivos simultáneamente (primero los más grandes). Los elementos ilegibles se omiten y se indican en el resumen final ("Omitidos (sin permiso/ilegibles)").
+Por cada carpeta seleccionada, Driv_term primero crea el árbol de carpetas remoto (nivel a nivel, en paralelo) y después sube todos los archivos simultáneamente (primero los más grandes). Los elementos ilegibles se omiten y se indican en el resumen final ("Omitidos (sin permiso/ilegibles)").
 
 ### Resumen del resultado
 
@@ -329,6 +434,37 @@ Subida completada: 128 archivos, 2 con error
    Fallaron: a.bin, b.iso
    Motivo del primero: [403] ...
 ```
+
+---
+
+## Mover a la papelera
+
+Hay dos formas de borrar, y ambas mueven los elementos a la **papelera de Drive** (nada se elimina de forma permanente):
+
+- **Un archivo:** abre su menú y elige `4) Mover a la papelera`.
+- **Varios archivos y/o carpetas:** usa `t` con una selección en la pantalla principal.
+
+```
+> t 2,4-6
+Mover a la papelera (se puede recuperar) (4):
+   - Copias antiguas/
+   - borrador.docx
+   - foto1.jpg
+   - foto2.jpg
+Confirmar [s/N]: s
+  Moviendo a la papelera 4/4
+Movidos a la papelera: 4
+```
+
+Cómo funciona:
+
+- Muestra lo que está a punto de enviar a la papelera (hasta 10 nombres; las carpetas terminan en `/`) y pide confirmación. **Cualquier respuesta distinta de `s` cancela** y no se toca nada.
+- Los elementos se procesan en paralelo, con un contador en vivo.
+- Mover una **carpeta** a la papelera también envía todo lo que contiene.
+- Los elementos quedan en la papelera de Drive, desde donde puedes restaurarlos en Google Drive (Google conserva los elementos de la papelera unos 30 días antes de eliminarlos definitivamente).
+- Si seleccionas un **acceso directo**, solo se envía a la papelera el acceso directo, **nunca** el archivo o carpeta al que apunta.
+- Si algún elemento falla (por ejemplo, archivos compartidos contigo que no son tuyos), el resto se procesa igualmente y el resumen indica cuáles fallaron y por qué.
+- `t all` envía a la papelera **todo** el listado actual. Revisa la lista de confirmación antes de responder `s`.
 
 ---
 
@@ -350,18 +486,18 @@ La extensión correcta se añade automáticamente al nombre del archivo. Ten en 
 
 ## Ajuste del rendimiento
 
-El número de transferencias simultáneas se controla con la variable de entorno `DRIVE_WORKERS` (por defecto **8**, rango permitido **de 1 a 32**).
+El número de transferencias simultáneas se controla con la variable de entorno `DRIVE_WORKERS` (por defecto **8**, rango permitido **de 1 a 32**). Se aplica a descargas, subidas y al mover elementos a la papelera.
 
 **Linux / macOS**
 
 ```bash
-DRIVE_WORKERS=12 python3 <nombre_del_script>.py
+DRIVE_WORKERS=12 python3 Driv_term_es.py
 ```
 
 **Windows PowerShell**
 
 ```powershell
-$env:DRIVE_WORKERS=12; python <nombre_del_script>.py
+$env:DRIVE_WORKERS=12; python Driv_term_es.py
 ```
 
 **Windows cmd**
@@ -427,10 +563,12 @@ Esta sección es para los curiosos y para quienes quieran contribuir.
 | --- | --- |
 | `Auth` | Inicio de sesión OAuth 2.0 loopback + PKCE, renovación de tokens (segura entre hilos), almacenamiento de tokens. |
 | `Http` | Capa HTTPS con una conexión persistente **por hilo y host**, reintentos automáticos con espera exponencial y jitter, renovación del token ante un 401 y gestión segura de redirecciones. |
-| `Drive` | Llamadas a la API de Drive v3: listado, búsqueda, listado por lotes, descargas, exportaciones, subidas y creación de carpetas. |
+| `Drive` | Llamadas a la API de Drive v3: listado, búsqueda, listado por lotes, descargas (individual, de carpeta y por lotes con varias selecciones), exportaciones, subidas (archivos y carpetas en un solo lote), creación de carpetas y mover a la papelera. |
 | `FileJob` | Un archivo a descargar, que puede constar de varias partes. |
 | `Progress` | Una barra de progreso global segura entre hilos, con velocidad suavizada y tiempo estimado. |
 | `browse()` / `file_menu()` | La interfaz interactiva de terminal. |
+| `pick_local()` / `choose_uploads()` | El explorador de archivos local (ventana nativa o respaldo con rutas escritas) y la pantalla de selección para subir. |
+| `parse_selection()` | Interpreta selecciones como `1-4,7` o `all` para `d` y `t`. |
 
 **Detalles de red**
 
@@ -467,7 +605,9 @@ Esta sección es para los curiosos y para quienes quieran contribuir.
 - La exportación de archivos nativos de Google está sujeta al límite de tamaño de exportación de Google (alrededor de 10 MB).
 - El visor muestra como máximo el **primer 1 MiB** de un archivo de texto y solo la **primera hoja** de una hoja de cálculo.
 - No hay sincronización: Driv_term es una herramienta interactiva de exploración y transferencia, no un cliente de sincronización.
-- No hay operaciones de renombrar, mover, copiar ni borrado permanente (solo crear carpeta, subir, descargar y mover a la papelera).
+- No hay operaciones de renombrar, mover, copiar ni borrado permanente (solo crear carpeta, subir, descargar y mover a la papelera). Mover a la papelera es la única forma de borrar, y siempre es reversible.
+- En Windows (y en Linux con `python3-tk`) la ventana del sistema selecciona **una carpeta cada vez**; repite la opción para añadir más. Los archivos sí se pueden seleccionar varios a la vez.
+- Los elementos que no son tuyos (por ejemplo algunos archivos de "Compartidos conmigo") no se pueden mover a la papelera; se indican como errores mientras se procesa el resto de la selección.
 - Los archivos subidos se guardan tal cual: **no** se convierten en Documentos/Hojas/Presentaciones nativos de Google.
 - La búsqueda por nombre encuentra nombres que *contienen* el texto; no busca en el contenido de los archivos.
 - Las transferencias no se reanudan entre reinicios del programa (la reanudación solo funciona dentro de una misma ejecución, en las subidas).
@@ -513,6 +653,15 @@ Usa Windows Terminal o PowerShell en una versión reciente de Windows. El progra
 **Windows SmartScreen / el antivirus marca el `.exe`**
 Los ejecutables sin firmar suelen provocar avisos. Ejecuta mejor el código fuente de Python, que puedes leer y verificar.
 
+**El explorador de archivos/carpetas no se abre**
+Pasa por SSH, en servidores sin pantalla o en Linux sin `zenity` ni `python3-tk`. Driv_term te pide entonces que escribas las rutas (una por línea), así que puedes subir igualmente. Para tener el explorador gráfico en Linux, instálalo con `sudo apt install zenity` (o `python3-tk`).
+
+**`Numero fuera de rango` / `Seleccion no valida`**
+Los números después de `d` o `t` deben estar en la columna `#` del listado actual. Ejemplos válidos: `d 3`, `d 1-4`, `t 1,3,7`, `d all`. Si la selección no es válida, no se descarga ni se envía nada a la papelera.
+
+**Algunos elementos no se pudieron mover a la papelera**
+El resumen indica cuáles fallaron y el motivo del primero. La causa habitual es un `[403]` en archivos que no son tuyos (por ejemplo, compartidos contigo). El resto de la selección se procesa igualmente.
+
 ---
 
 ## Preguntas frecuentes
@@ -530,7 +679,16 @@ Sí. Introduce un correo distinto al arrancar. Los tokens se guardan por cuenta.
 Los elementos de las unidades compartidas aparecen en los listados y búsquedas. Usa `c` para los archivos compartidos directamente contigo.
 
 **¿Borra mis archivos?**
-Solo si eliges explícitamente *Mover a la papelera*, y aun así los archivos se pueden restaurar desde la papelera de Drive.
+Solo si eliges explícitamente *Mover a la papelera* (desde el menú de un archivo, o con `t` para varios elementos), tras una confirmación, y aun así los archivos se pueden restaurar desde la papelera de Drive. Nunca borra de forma permanente.
+
+**¿Puedo descargar o borrar más de un archivo o carpeta a la vez?**
+Sí. Usa una selección: `d 1-3,5` para descargar, `t 2,4-6` para mover a la papelera, o `all` para todo el listado. Se pueden mezclar archivos y carpetas. Ver [Seleccionar varios elementos](#seleccionar-varios-elementos).
+
+**¿Puedo subir varios archivos y carpetas a la vez?**
+Sí. Pulsa `u`, elige archivos y carpetas con el explorador tantas veces como quieras y pulsa `s` para subirlos todos en un solo lote.
+
+**¿Funciona sin interfaz gráfica (SSH, servidores, consola de Linux)?**
+Sí. El explorador es opcional: si no se puede abrir ninguna ventana, Driv_term te pide que escribas o pegues las rutas. Todo lo demás es terminal pura. Solo el primer inicio de sesión necesita un navegador en el mismo equipo.
 
 **¿Dónde están los archivos temporales?**
 Los archivos que no son de texto abiertos con *Ver* se guardan en una carpeta `drive_term_*` del directorio temporal de tu sistema.
