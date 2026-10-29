@@ -703,4 +703,4 @@ Issues and pull requests are welcome. If you find a bug, please include your ope
 
 ## License
 
-No license has been specified yet. Until one is added, all rights are reserved by the author. If you want others to freely use and modify the project, consider adding a license such as MIT.
+No license has been specified. All rights are reserved by the author. This is a free project with no money beneficts
