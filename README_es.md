@@ -704,4 +704,4 @@ Los issues y pull requests son bienvenidos. Si encuentras un error, incluye tu s
 
 ## Licencia
 
-Todavía no se ha especificado ninguna licencia.
+No se ha especificado ninguna licencia. Todos los derechos están reservados. Este es un proyecto gratis sin un beneficio económico propio
