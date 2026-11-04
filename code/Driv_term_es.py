@@ -14,6 +14,9 @@ FAST VERSION:
   - A single global progress bar (speed and remaining time).
   - Upload with the system file picker: several files and folders at once.
   - Download or trash SEVERAL files/folders at once (d 1-3,5 / t 2,4-6 / d all).
+  - Copy (cp SEL) or cut/move (mv SEL) files and folders to another folder of your own Drive.
+  - Same-name handling when uploading, like Google Drive: replace or keep both ("name (1)").
+  - Typing an email without "@" completes it with @gmail.com.
 
 Usage:   python3 Driv_term_es.py
          python3 Driv_term_es.py --reset-config   (deletes saved OAuth credentials)
@@ -93,6 +96,7 @@ TEXT_EXTS = {".txt", ".md", ".py", ".log", ".csv", ".json", ".yml", ".yaml", ".i
 
 HELP = ("  [numero] abrir | b atras | h inicio | n/p pagina | s buscar | c compartidos conmigo\n"
         "  d SEL descargar | t SEL papelera | u subir | m nueva carpeta   (SEL: 3 | 1-4 | 1,3,7 | all)\n"
+        "  cp SEL copiar | mv SEL cortar/mover   (a otra carpeta de tu Drive)\n"
         "  r recargar | x cerrar sesion | q salir   (Ctrl+C cancela una transferencia)")
 
 
@@ -163,6 +167,45 @@ def reserve(directory, name, used):
         n += 1
     used.add(cand.lower())
     return os.path.join(directory, cand)
+
+
+def unique_name(name, taken, is_dir=False):
+    """'name' if it is free, otherwise 'name (1)', 'name (2)'... (first one not in 'taken').
+    For files the number goes before the extension: 'report (1).pdf'."""
+    base, ext = (name, "") if is_dir else os.path.splitext(name)
+    n, cand = 1, name
+    while cand in taken:
+        cand = "%s (%d)%s" % (base, n, ext)
+        n += 1
+    return cand
+
+
+def find_same(existing, name, is_dir, plain=False):
+    """First item of 'existing' (a Drive listing) that a new file/folder called 'name' would
+    clash with: same name and same kind. plain=True only accepts ordinary files (not
+    Google Docs, shortcuts or folders), the ones whose content can be replaced."""
+    for c in existing:
+        if c["name"] != name:
+            continue
+        mt = c["mimeType"]
+        if is_dir:
+            if mt == FOLDER:
+                return c
+        elif (not mt.startswith(GAPPS)) if plain else (mt != FOLDER):
+            return c
+    return None
+
+
+def file_md5(path):
+    """MD5 of a local file (Drive reports md5Checksum for the files it stores)."""
+    try:
+        h = hashlib.md5(usedforsecurity=False)
+    except TypeError:                                   # Python < 3.9
+        h = hashlib.md5()
+    with open(path, "rb") as fh:
+        for b in iter(lambda: fh.read(BUF), b""):
+            h.update(b)
+    return h.hexdigest()
 
 
 def ask_path(prompt):
@@ -411,6 +454,48 @@ def pager(text, title=""):
         print("(vacio)")
 
 
+class UserCancelled(Exception):
+    """The person chose Cancel when asked what to do."""
+
+
+def make_asker(mode):
+    """Build ask(kind, name, new_name) -> "replace" | "keep": the terminal version of Google
+    Drive's "Upload options" dialog (mode: "upload" or "transfer"). Options 3 and 4 apply
+    the choice to every remaining clash of the operation."""
+    sticky = []
+
+    def ask(kind, name, new_name):
+        if sticky:
+            return sticky[0]
+        folder = kind == "folder"
+        print('\n"%s" ya esta en esta ubicacion.' % name)
+        if mode == "upload":
+            rep = ("Reemplazar la carpeta existente por la nueva version (sus opciones para compartir no cambian)"
+                   if folder else "Reemplazar el archivo existente por la nueva version")
+        else:
+            rep = ("Reemplazar la carpeta existente (va a la papelera, se puede recuperar)"
+                   if folder else "Reemplazar el archivo existente (va a la papelera, se puede recuperar)")
+        print("   1) " + rep)
+        print('   2) Mantener ambos (el nuevo se llamara "%s")' % new_name)
+        print("   3) Reemplazar en TODOS los casos restantes")
+        print("   4) Mantener ambos en TODOS los casos restantes")
+        print("   0) Cancelar")
+        while True:
+            try:
+                ans = input("Elige [1-4, 0 = cancelar]: ").strip()
+            except EOFError:
+                ans = "0"
+            if ans in ("1", "2", "3", "4"):
+                choice = "replace" if ans in ("1", "3") else "keep"
+                if ans in ("3", "4"):
+                    sticky.append(choice)
+                return choice
+            if ans == "0":
+                raise UserCancelled()
+
+    return ask
+
+
 class DriveError(Exception):
     def __init__(self, code, body=""):
         self.code = code
@@ -498,6 +583,35 @@ def run_parallel(fn, items, workers=WORKERS):
         raise
     finally:
         ex.shutdown(wait=True)
+
+
+def run_counted(label, items, fn):
+    """Run fn(item) in parallel while showing 'label i/N'.
+    Returns the list of (item, error) for the items that failed."""
+    errors, done, lock = [], [0], threading.Lock()
+    total = len(items)
+
+    def one(it):
+        if CANCEL.is_set():
+            return
+        err = None
+        try:
+            fn(it)
+        except Exception as e:
+            err = e
+        with lock:
+            done[0] += 1
+            if err is not None:
+                errors.append((it, err))
+            sys.stdout.write("\r  %s %d/%d" % (label, done[0], total))
+            sys.stdout.flush()
+
+    try:
+        run_parallel(one, items)
+    finally:
+        if total:
+            sys.stdout.write("\n")
+    return errors
 
 
 # ----------------------------------------------------------------- OAuth
@@ -772,7 +886,7 @@ class Drive:
         out, token = [], None
         while True:
             params = {"q": q, "pageSize": 1000,
-                      "fields": "nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails)",
+                      "fields": "nextPageToken,files(id,name,mimeType,size,md5Checksum,modifiedTime,parents,shortcutDetails)",
                       "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"}
             if order:
                 params["orderBy"] = "folder,name"
@@ -1059,112 +1173,274 @@ class Drive:
         open_external(self.download(f, tempfile.mkdtemp(prefix="drive_term_")))
 
     # ---- trash
+    def _trash_one(self, f):
+        self.call("/files/" + f["id"], {"supportsAllDrives": "true"}, "PATCH", {"trashed": True})
+
     def trash_many(self, items):
         """Move files/folders to the Drive trash, in parallel (recoverable for 30 days).
         Trashing a folder also hides everything inside it, so one request is enough."""
-        errors, state, lock = [], {"ok": 0, "done": 0}, threading.Lock()
-        total = len(items)
+        errs = run_counted("Moviendo a la papelera", items, self._trash_one)
+        return {"ok": len(items) - len(errs), "fail": [f["name"] for f, _ in errs],
+                "errors": [(f["name"], str(e)) for f, e in errs]}
 
-        def one(f):
-            if CANCEL.is_set():
-                return
-            err = None
-            try:
-                self.call("/files/" + f["id"], {"supportsAllDrives": "true"}, "PATCH", {"trashed": True})
-            except Exception as e:
-                err = e
-            with lock:
-                state["done"] += 1
-                if err is None:
-                    state["ok"] += 1
-                else:
-                    errors.append((f["name"], str(err)))
-                sys.stdout.write("\r  Moviendo a la papelera %d/%d" % (state["done"], total))
-                sys.stdout.flush()
-
-        try:
-            run_parallel(one, items)
-        finally:
-            sys.stdout.write("\n")
-        return {"ok": state["ok"], "fail": [n for n, _ in errors], "errors": errors}
-
-    # ---- upload
+    # ---- folders
     def create_folder(self, name, parent):
         d = self.call("/files", {"fields": "id", "supportsAllDrives": "true"}, "POST",
                       {"name": name, "mimeType": FOLDER, "parents": [parent]})
         return d["id"]
 
-    def upload_paths(self, paths, parent):
-        """Upload any mix of files and folders in ONE batch. First creates the remote
-        folders (level by level, in parallel) and then uploads all files at once."""
-        files, skipped, level = [], [], []
+    def _make_folders(self, specs):
+        """specs: list of (key, parent_id, name). Creates them in parallel and
+        returns {key: new_folder_id}."""
+        ids = {}
+
+        def mk(spec):
+            if not CANCEL.is_set():
+                ids[spec[0]] = self.create_folder(spec[2], spec[1])
+
+        run_parallel(mk, specs)
+        return ids
+
+    # ---- copy / move inside Drive
+    def transfer_many(self, items, dest_id, dest_chain, move, ask):
+        """Copy (move=False) or move (move=True) files/folders to another folder of the
+        same Drive. Copies are made by Drive itself (nothing is downloaded); folders are
+        rebuilt level by level. Moving is a single metadata change per item.
+
+        Name clashes in the destination are settled through ask():
+          - replace: the existing item goes to the trash (recoverable) and the new one
+            takes its name;
+          - keep: the new item is called "name (1)", "name (2)"... (first free one).
+        dest_chain: ids of the destination folder and all its ancestors, used to refuse
+        putting a folder inside itself."""
+        errors, skipped, plan = [], [], []
+        existing = self.list("folder", dest_id)
+        taken = {c["name"] for c in existing}
+        claimed = set()
+        src_ids = {f["id"] for f in items}
+        verb = "mover" if move else "copiar"
+        for f in items:
+            name, is_dir = f["name"], f["mimeType"] == FOLDER
+            if is_dir and f["id"] in dest_chain:
+                errors.append((name, "Una carpeta no se puede %s dentro de si misma ni de sus subcarpetas." % verb))
+                continue
+            here = dest_id in (f.get("parents") or [])
+            if move and here:
+                skipped.append(name)
+                continue
+            clash = None if here else find_same(existing, name, is_dir)
+            new_name = name
+            if clash is not None and clash["id"] in src_ids:
+                clash, here = None, True            # never trash something we are about to transfer
+            if clash is not None:
+                unique = unique_name(name, taken, is_dir)
+                if ask("folder" if is_dir else "file", name, unique) == "keep":
+                    new_name, clash = unique, None
+            elif here or (is_dir, name) in claimed:
+                new_name = unique_name(name, taken, is_dir)
+            taken.add(new_name)
+            claimed.add((is_dir, new_name))
+            plan.append((f, new_name, clash))
+
+        # replaced items go to the trash first
+        victims = [c for _, _, c in plan if c is not None]
+        if victims:
+            blocked = set()
+            for c, e in run_counted("Reemplazando", victims, self._trash_one):
+                blocked.add(c["id"])
+                errors.append((c["name"], str(e)))
+            plan = [p for p in plan if p[2] is None or p[2]["id"] not in blocked]
+
+        ok = 0
+        if move:
+            def move_one(p):
+                f, new_name, _ = p
+                parents = f.get("parents")
+                if parents is None:
+                    parents = self.call("/files/" + f["id"], {"fields": "parents", "supportsAllDrives": "true"}).get("parents", [])
+                params = {"addParents": dest_id, "supportsAllDrives": "true", "fields": "id"}
+                if parents:
+                    params["removeParents"] = ",".join(parents)
+                self.call("/files/" + f["id"], params, "PATCH", {"name": new_name} if new_name != f["name"] else {})
+
+            errs = run_counted("Moviendo", plan, move_one)
+            errors.extend((p[0]["name"], str(e)) for p, e in errs)
+            ok = len(plan) - len(errs)
+        else:
+            jobs = [(p[0]["id"], p[1], dest_id) for p in plan if p[0]["mimeType"] != FOLDER]
+            ids = self._make_folders([(i, dest_id, p[1]) for i, p in enumerate(plan) if p[0]["mimeType"] == FOLDER])
+            created = set(ids.values())
+            level = [(plan[i][0]["id"], nid) for i, nid in ids.items()]
+            if level:
+                sys.stdout.write("  Leyendo estructura...")
+                sys.stdout.flush()
+            while level:
+                kids = self.list_children([sid for sid, _ in level])
+                specs, srcs = [], {}
+                for sid, nid in level:
+                    for c in kids.get(sid, []):
+                        if c["id"] in created:
+                            continue                # safety net: never walk into what we just created
+                        if c["mimeType"] == FOLDER:
+                            srcs[len(specs)] = c["id"]
+                            specs.append((len(specs), nid, c["name"]))
+                        elif c["mimeType"] == SHORTCUT:
+                            skipped.append(c["name"])   # shortcuts are skipped (avoids loops)
+                        else:
+                            jobs.append((c["id"], c["name"], nid))
+                ids = self._make_folders(specs)
+                created.update(ids.values())
+                level = [(srcs[k], nid) for k, nid in ids.items()]
+            if created:
+                print(" %d archivos." % len(jobs))
+
+            def copy_one(j):
+                self.call("/files/%s/copy" % j[0], {"supportsAllDrives": "true", "fields": "id"}, "POST",
+                          {"name": j[1], "parents": [j[2]]})
+
+            errs = run_counted("Copiando", jobs, copy_one)
+            errors.extend((j[1], str(e)) for j, e in errs)
+            ok = len(jobs) - len(errs)
+        return {"ok": ok, "fail": [n for n, _ in errors], "errors": errors, "skipped": skipped}
+
+    # ---- upload
+    def upload_paths(self, paths, parent, ask=None):
+        """Upload any mix of files and folders in ONE batch.
+
+        Names are compared with what the destination folder already holds, like Google
+        Drive does. For every clash ask() answers "replace" or "keep":
+          - file, replace: a new version of the existing file (same id, same sharing);
+          - folder, replace: merge into the existing folder. Matching sub-folders are
+            merged too, files with the same name get a new version, identical files are
+            skipped and anything that only exists in Drive stays untouched;
+          - keep: the new item is called "name (1)", "name (2)"... (first free one).
+        Then it creates the new remote folders (level by level, in parallel) and uploads
+        all files at once."""
+        files, skipped, merge, new_dirs, level = [], [], set(), [], []
+        existing = self.list("folder", parent)
+        taken = {c["name"] for c in existing}
+        claimed = set()
         for p in paths:
             p = os.path.abspath(p)
             try:
-                if os.path.isdir(p):
-                    level.append((p, parent))
-                else:
-                    files.append((p, parent, os.path.getsize(p)))
+                is_dir = os.path.isdir(p)
+                size = 0 if is_dir else os.path.getsize(p)
             except OSError:
                 skipped.append(p)
-        if level:
+                continue
+            name = os.path.basename(p) or "carpeta"
+            old = find_same(existing, name, is_dir, plain=True)
+            up_name = name
+            if old is not None:
+                unique = unique_name(name, taken, is_dir)
+                if ask is None or ask("folder" if is_dir else "file", name, unique) == "keep":
+                    up_name, old = unique, None
+            elif (is_dir, name) in claimed:
+                up_name = unique_name(name, taken, is_dir)
+            taken.add(up_name)
+            claimed.add((is_dir, up_name))
+            if is_dir and old is not None:
+                level.append((p, old["id"]))
+                merge.add(old["id"])
+            elif is_dir:
+                new_dirs.append((p, parent, up_name))
+            else:
+                files.append((p, parent, size, up_name, old))
+        if new_dirs or level:
             print("  Preparando carpetas en Drive...")
+        ids = self._make_folders(new_dirs)
+        level += [(p, ids[p]) for p, _, _ in new_dirs]
         while level:
-            ids = {}
-
-            def mk(item, ids=ids):
-                if CANCEL.is_set():
-                    return
-                ids[item[0]] = self.create_folder(os.path.basename(item[0]) or "carpeta", item[1])
-
-            run_parallel(mk, level)
-            nxt = []
-            for local, _ in level:
-                fid = ids[local]
+            to_list = [rid for _, rid in level if rid in merge]
+            kids = self.list_children(to_list) if to_list else {}
+            to_create, nxt = [], []
+            for local, rid in level:
+                dirs_by, files_by = {}, {}
+                for c in kids.get(rid, []):
+                    if c["mimeType"] == FOLDER:
+                        dirs_by.setdefault(c["name"], c)
+                    elif not c["mimeType"].startswith(GAPPS):
+                        files_by.setdefault(c["name"], c)
                 try:
                     with os.scandir(local) as it:
                         for e in sorted(it, key=lambda e: e.name.lower()):
                             try:
                                 if e.is_dir(follow_symlinks=False):
-                                    nxt.append((e.path, fid))
+                                    d = dirs_by.get(e.name)
+                                    if d is not None:               # merge into the existing sub-folder
+                                        nxt.append((e.path, d["id"]))
+                                        merge.add(d["id"])
+                                    else:
+                                        to_create.append((e.path, rid, e.name))
                                 elif e.is_file():
-                                    files.append((e.path, fid, e.stat().st_size))
+                                    files.append((e.path, rid, e.stat().st_size, e.name, files_by.get(e.name)))
                             except OSError:
                                 skipped.append(e.path)
                 except OSError:
                     skipped.append(local)
+            ids = self._make_folders(to_create)
+            nxt += [(p, ids[p]) for p, _, _ in to_create]
             level = nxt
-        return self.upload_files(files, skipped)
+        files, same = self._drop_identical(files)
+        return self.upload_files(files, skipped, same)
 
-    def upload_path(self, path, parent):
-        return self.upload_paths([path], parent)
+    def upload_path(self, path, parent, ask=None):
+        return self.upload_paths([path], parent, ask)
 
-    def upload_files(self, files, skipped=()):
-        files = sorted(files, key=lambda x: -x[2])          # largest first
-        prog = Progress("Subiendo", len(files), sum(s for _, _, s in files))
-        fails = []
+    def _drop_identical(self, files):
+        """Files that would REPLACE a file of Drive with the very same content (same size
+        and MD5) need no upload. Returns (files_still_to_upload, how_many_were_identical)."""
+        cand = [f for f in files if f[4] is not None and f[4].get("md5Checksum")
+                and int(f[4].get("size") or 0) == f[2]]
+        if not cand:
+            return files, 0
+        sys.stdout.write("  Comparando con los archivos que ya hay en Drive...")
+        sys.stdout.flush()
+        same = set()
 
-        def work(item):
-            path, parent, size = item
+        def check(f):
             if CANCEL.is_set():
                 return
             try:
-                self.upload_file(path, parent, size, prog)
+                if file_md5(f[0]) == f[4]["md5Checksum"].lower():
+                    same.add(f[0])
+            except OSError:
+                pass                                # unreadable: let the upload report it
+
+        run_parallel(check, cand)
+        print(" %d identicos." % len(same))
+        return [f for f in files if f[0] not in same], len(same)
+
+    def upload_files(self, files, skipped=(), same=0):
+        files = sorted(files, key=lambda x: -x[2])          # largest first
+        prog = Progress("Subiendo", len(files), sum(x[2] for x in files))
+        fails = []
+
+        def work(item):
+            path, parent, size, name, old = item
+            if CANCEL.is_set():
+                return
+            try:
+                self.upload_file(path, parent, size, prog, name, old["id"] if old else None)
                 if not CANCEL.is_set():
                     prog.file_done()
             except Exception as e:
-                fails.append((os.path.basename(path), str(e)))
+                fails.append((name, str(e)))
 
         try:
             run_parallel(work, files)
         finally:
             prog.finish()
-        return {"ok": prog.files_done, "fail": [n for n, _ in fails], "errors": fails, "skipped": list(skipped)}
+        return {"ok": prog.files_done, "fail": [n for n, _ in fails], "errors": fails,
+                "skipped": list(skipped), "same": same}
 
-    def upload_file(self, path, parent, size, prog):
-        name = os.path.basename(path)
+    def upload_file(self, path, parent, size, prog, name=None, replace_id=None):
+        name = name or os.path.basename(path)
         mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
-        meta = {"name": name, "parents": [parent]}
+        if replace_id:      # new version of an existing file (it keeps its id, sharing and place)
+            meta, method, base = {"name": name}, "PATCH", "%s/%s" % (UPLOAD_URL, replace_id)
+        else:
+            meta, method, base = {"name": name, "parents": [parent]}, "POST", UPLOAD_URL
 
         if size <= SMALL_UPLOAD:
             # Small file: metadata + content in ONE request (half the network round trips).
@@ -1175,14 +1451,14 @@ class Drive:
                     + json.dumps(meta).encode("utf-8")
                     + b"\r\n--" + b + b"\r\nContent-Type: " + mime.encode("ascii", "ignore") + b"\r\n\r\n"
                     + content + b"\r\n--" + b + b"--")
-            r = self.http.send(UPLOAD_URL + "?uploadType=multipart&supportsAllDrives=true&fields=id", "POST", body,
+            r = self.http.send(base + "?uploadType=multipart&supportsAllDrives=true&fields=id", method, body,
                                {"Content-Type": 'multipart/related; boundary="%s"' % b.decode()})
             r.read()
             prog.add(len(content))
             return
 
         # Large file: resumable session, big chunks over a persistent connection.
-        r = self.http.send(UPLOAD_URL + "?uploadType=resumable&supportsAllDrives=true&fields=id", "POST",
+        r = self.http.send(base + "?uploadType=resumable&supportsAllDrives=true&fields=id", method,
                            json.dumps(meta).encode("utf-8"),
                            {"Content-Type": "application/json; charset=UTF-8",
                             "X-Upload-Content-Type": mime, "X-Upload-Content-Length": str(size)})
@@ -1319,9 +1595,104 @@ def summary(st, what):
         msg += ", %d con error" % len(st["fail"])
         msg += "\n   Fallaron: " + ", ".join(st["fail"][:5])
         msg += "\n   Motivo del primero: " + st["errors"][0][1]
+    if st.get("same"):
+        msg += "\n   Sin cambios (ya habia un archivo identico en Drive): %d" % st["same"]
     if st.get("skipped"):
         msg += "\n   Omitidos (sin permiso/ilegibles): %d" % len(st["skipped"])
     return msg
+
+
+def transfer_summary(st, move, dest_label):
+    msg = ("Movidos: %d elementos" if move else "Copiados: %d archivos") % st["ok"]
+    msg += " -> " + dest_label
+    if st["fail"]:
+        msg += ", %d con error" % len(st["fail"])
+        msg += "\n   Fallaron: " + ", ".join(st["fail"][:5])
+        msg += "\n   Motivo del primero: " + st["errors"][0][1]
+    if st.get("skipped"):
+        msg += "\n   Omitidos (accesos directos o ya estaban ahi): %d" % len(st["skipped"])
+    return msg
+
+
+def resolve_source(f):
+    """Like resolve(), but a shortcut's own parents must not be mistaken for the target's."""
+    g = resolve(f)
+    if g is not f:
+        g.pop("parents", None)
+    return g
+
+
+def pick_drive_folder(drive, stack, title):
+    """Browse the folders of the Drive and choose one as destination.
+    Returns (folder_id, path_label, ids_of_it_and_its_ancestors) or None if cancelled."""
+    chain = [(s[1], s[2]) for s in stack] if all(s[0] == "folder" for s in stack) else [(stack[0][1], stack[0][2])]
+    items, page, notice = None, 0, ""
+    while True:
+        cur_id = chain[-1][0]
+        if items is None:
+            clear()
+            print("Cargando...")
+            try:
+                kids = [resolve(f) for f in drive.list("folder", cur_id)]
+                items = [f for f in kids if f["mimeType"] == FOLDER]
+            except DriveError as e:
+                items, notice = [], "Error: %s" % e
+            page = 0
+        pages = max(1, -(-len(items) // PAGE_SIZE))
+        page = max(0, min(page, pages - 1))
+        cols = shutil.get_terminal_size((100, 24)).columns
+        namew = max(20, min(cols - 10, 80))
+        label = " / ".join(n for _, n in chain)
+        clear()
+        print("=== %s ===" % title)
+        print("Ruta: %s\n" % label)
+        start = page * PAGE_SIZE
+        for i, f in enumerate(items[start:start + PAGE_SIZE], start + 1):
+            name = f["name"] if len(f["name"]) <= namew else f["name"][:namew - 1] + "~"
+            print("%4d  DIR   %s" % (i, name))
+        if not items:
+            print("  (sin subcarpetas)")
+        print("\nPagina %d/%d - %d carpetas" % (page + 1, pages, len(items)))
+        print("  [numero] abrir | . elegir ESTA carpeta | b atras | h inicio | n/p pagina | m nueva carpeta | 0 cancelar")
+        if notice:
+            print("\n>> " + notice)
+            notice = ""
+        try:
+            cmd = input("\n> ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return None
+        try:
+            if cmd == "0":
+                return None
+            elif cmd == ".":
+                return cur_id, label, {i for i, _ in chain}
+            elif cmd == "b":
+                if len(chain) > 1:
+                    chain.pop()
+                    items = None
+            elif cmd == "h":
+                chain = chain[:1]
+                items = None
+            elif cmd == "n":
+                page += 1
+            elif cmd == "p":
+                page -= 1
+            elif cmd == "m":
+                name = input("Nombre de la nueva carpeta: ").strip()
+                if name:
+                    drive.create_folder(name, cur_id)
+                    items, notice = None, "Carpeta creada."
+            elif cmd.isdigit():
+                n = int(cmd)
+                if 1 <= n <= len(items):
+                    chain.append((items[n - 1]["id"], items[n - 1]["name"]))
+                    items = None
+                else:
+                    notice = "Numero fuera de rango."
+            elif cmd:
+                notice = "Comando no reconocido."
+        except DriveError as e:
+            notice = "Error: %s" % e
 
 
 def browse(drive, root_id):
@@ -1400,10 +1771,29 @@ def browse(drive, root_id):
                 else:
                     paths = choose_uploads(" / ".join(s[2] for s in stack))
                     if paths:
-                        st = drive.upload_paths(paths, ident)
+                        st = drive.upload_paths(paths, ident, make_asker("upload"))
                         items, notice = None, summary(st, "Subida completada")
             elif low in ("d", "t"):
                 notice = "Indica que elementos: d 3 | d 1-4 | d 1,3,7 | d all   (igual con t para la papelera)"
+            elif low in ("cp", "mv"):
+                notice = "Indica que elementos: cp 3 | cp 1-4 | mv 1,3,7 | mv all   (cp copia, mv corta y mueve)"
+            elif low[:3] in ("cp ", "mv "):
+                move = low[:2] == "mv"
+                try:
+                    picked = [items[i] for i in parse_selection(low[3:], len(items))]
+                except ValueError as e:
+                    picked, notice = [], str(e)
+                if picked:
+                    dest = pick_drive_folder(drive, stack, "%s %d elemento(s) a..." % ("Mover" if move else "Copiar", len(picked)))
+                    if dest is None:
+                        notice = "Cancelado."
+                    else:
+                        dest_id, dest_label, chain = dest
+                        # a moved shortcut is the shortcut itself; a copied one is its target
+                        src = [f if move else resolve_source(f) for f in picked]
+                        st = drive.transfer_many(src, dest_id, chain, move, make_asker("transfer"))
+                        notice = transfer_summary(st, move, dest_label)
+                        items = None
             elif low[:2] in ("d ", "t "):
                 try:
                     picked = [items[i] for i in parse_selection(low[2:], len(items))]
@@ -1445,6 +1835,8 @@ def browse(drive, root_id):
         except KeyboardInterrupt:
             print()
             items, notice = None, "Transferencia cancelada."
+        except UserCancelled:
+            items, notice = None, "Cancelado."
         except (DriveError, OSError) as e:
             notice = "Error: %s" % e
 
@@ -1466,6 +1858,10 @@ def main():
     cfg = ensure_config()
     print("=== Google Drive en la terminal ===\n")
     email = input("email: ").strip()
+    if email.endswith("@"):
+        email += "gmail.com"            # "name@"  -> "name@gmail.com"
+    elif email and "@" not in email:
+        email += "@gmail.com"           # "name"   -> "name@gmail.com", silently, like Google does
     if "@" not in email:
         print("Correo no valido.")
         return 1
